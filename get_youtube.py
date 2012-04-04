@@ -25,18 +25,20 @@ PAGE = '''
 </HTML>
 '''
 
+def get_proc(cmd):
+    return Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                 close_fds=True)
+
+
 class GetYoutube(object):
     def index(self, url=None):
         args = {'text': ''}
-
         title = '<title>' #youtube title.
-
 
         if url not in (None, ''):
             title = None
             cmd = 'youtube-dl --get-title %s' % url
-            proc = proc = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                                close_fds=True)
+            proc = get_proc(cmd)
             (stdout, stderr) = proc.communicate()
             if proc.returncode == 0:
                 stdout = stdout.strip()
@@ -47,8 +49,7 @@ class GetYoutube(object):
                 args['text'] = "ERROR RETURN FROM youtube-dl binary<br/>"
 
             cmd = 'youtube-dl --get-filename %s' % url
-            proc = proc = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                                close_fds=True)
+            proc = get_proc(cmd)
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
                 args['text'] += "ERROR cmd '%s' failed<br/>" % cmd
@@ -56,21 +57,19 @@ class GetYoutube(object):
             fname = stdout                
             ext = fname.split('.')[-1]
 
+            dest = os.path.join(DOWNLOAD_DIR, title)
+            dest = dest + '.' + ext
+            if os.path.exists(dest):
+                args['text'] += "ERROR %s already exists<br/>" % dest
+                return PAGE % args
+
             cmd = 'youtube-dl %s' % url
-            proc = proc = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                                close_fds=True)
+            proc = get_proc(cmd)
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
                 args['text'] += "ERROR cmd '%s' failed<br/>" % cmd
+            shutil.move(fname, dest)
 
-            dest = os.path.join(DOWNLOAD_DIR, title)
-            dest = dest + '.' + ext
-            if not os.path.exists(dest):
-                shutil.move(fname, dest)
-                args['text'] += "File '%s' is in place" % dest
-            else:
-                args['text'] += "ERROR %s already exists<br/>" % dest
-                            
         return PAGE % args
     index.exposed = True
 
