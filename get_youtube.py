@@ -42,12 +42,6 @@ class GetYoutube(object):
 
         if url not in (None, ''):
             ydw = YoutubeDlWrapper(url)
-
-            ret = fix_text(ydw.get_filename())
-            if ret['err']:
-                args['text'] += ret['text']
-                return PAGE % args
-
             ret = fix_text(ydw.download())
             if ret['err']:
                 args['text'] += ret['text']
