@@ -4,15 +4,12 @@
 Script to download youtube videos and organize them (if possible).
 '''
 
-import time
-import threading
-
 import cherrypy
 from cherrypy.process.plugins import Monitor
 
 #from pyechonest import song, artist
 
-from youtubedl_wrapper import YoutubeDlWrapper
+from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
 
 DOWNLOAD_DIR = "video/"
@@ -47,6 +44,7 @@ RECENT_QUEUE = YdlQueue()
 
 def title_worker():
     '''
+    resolve titles for videos in TITLE_QUEUE
     '''
     while True:
         ydw = TITLE_QUEUE.get()
@@ -60,11 +58,12 @@ def title_worker():
 
 def download_worker():
     '''
+    Download videos in DOWN_QUEUE
     '''
     ydw = YDL_QUEUE.get()
     if ydw == None:
         return
-    DOWN_QUEUE.put(ydw)    
+    DOWN_QUEUE.put(ydw)
     ret = fix_text(ydw.download())
     if ret['err']:
         ERR_QUEUE.put(ret['text'])
@@ -81,13 +80,14 @@ def queue_to_table(queue, title, link=None, reverse=False):
         return ''
     ret = '<table style="width:100%%" border=1>'
     if link:
-        ret += '<tr><td><center><b>%s</b><a href="%s"> (clear)</a></center></td></tr>' % (title, link)
+        ret += '<tr><td><center><b>%s</b><a href="%s"> ' \
+               '(clear)</a></center></td></tr>' % (title, link)
     else:
         ret += '<tr><td><b>%s</b></td></tr>' % title
     if reverse:
         entries.reverse()
     for entry in entries:
-        ret +=  '<tr><td>%s</td></tr>' % str(entry)
+        ret += '<tr><td>%s</td></tr>' % str(entry)
     ret += '</table><br/>'
     return ret
 
@@ -111,17 +111,18 @@ class GetYoutube(object):
             ydw = None
             try:
                 ydw = YoutubeDlWrapper(url)
-            except Exception, exc:
-                args['text'] = str(exc)
-                return PAGE % args
-
-            TITLE_QUEUE.put(ydw)
+            except YoutubeDlWrapperException, exc:
+                ERR_QUEUE.put(str(exc))
+                url = None
+            if url:
+                TITLE_QUEUE.put(ydw)
         args['text'] += queue_to_table(DOWN_QUEUE, 'Downloading')
         args['text'] += queue_to_table(YDL_QUEUE, 'Queue')
         args['text'] += queue_to_table(ERR_QUEUE, 'Errors', 'clear_errors')
         args['text'] += queue_to_table(TITLE_QUEUE, 'Waiting for titles')
         RECENT_QUEUE.drop_lru(10)
-        args['text'] += queue_to_table(RECENT_QUEUE, 'Recently Downloaded', None, True)
+        args['text'] += queue_to_table(RECENT_QUEUE, 'Recently Downloaded',
+            None, True)
 
         return PAGE % args
     index.exposed = True

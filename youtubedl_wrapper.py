@@ -13,6 +13,11 @@ def get_proc(cmd):
     return Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
                  close_fds=True)
 
+class YoutubeDlWrapperException(Exception):
+    '''
+    custom exception type
+    '''
+
 class YoutubeDlWrapper(object):
     '''
     A simple wrapper around youtube-dl binary.
@@ -22,7 +27,7 @@ class YoutubeDlWrapper(object):
         Save off URL for later use
         '''
         if not url.startswith('http://') and not url.startswith('https://'):
-            raise Exception("Bad URL: %s" % url)
+            raise YoutubeDlWrapperException("Bad URL: %s" % url)
         self.url = url
         self.title = None
 
@@ -52,7 +57,8 @@ class YoutubeDlWrapper(object):
             elif stdout != '':
                 ret['text'] += "%s\n" % stdout
             else: #unlikely....
-                ret['text'] += "no output, only got return code: %d" % proc.returncode
+                ret['text'] += "no output, only got return code: %d" % \
+                    proc.returncode
 
         return ret
 
