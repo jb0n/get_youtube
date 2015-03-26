@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
 '''
-Script so Erin can dl youtube videos into fishsticks Music Video dir.
+Script to download youtube videos and organize them (if possible).
 '''
 
-import os
-import shutil
 import cherrypy
-from subprocess import Popen, PIPE
 
-DOWNLOAD_DIR = "/home/zun/media/music_video/"
+#from pyechonest import song, artist
+
+from youtubedl_wrapper import YoutubeDlWrapper
+
+DOWNLOAD_DIR = "video/"
 ADDR = '0.0.0.0'
 PAGE = '''
 <HTML>
@@ -25,50 +26,32 @@ PAGE = '''
 </HTML>
 '''
 
-def get_proc(cmd):
-    return Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                 close_fds=True)
+def fix_text(ret):
+    'turn \n into <br/> and make sure one is  on the end'
+    ret['text'] = ret['text'].replace('\n', '<br/>')
+    if not ret['text'].endswith('<br/>'):
+        ret['text'] = ret['text'] + '<br/>'
+    return ret
 
 
 class GetYoutube(object):
+    'The webserver class to downlod videos from youtube'
     def index(self, url=None):
+        'index/default page'
         args = {'text': ''}
-        title = '<title>' #youtube title.
 
         if url not in (None, ''):
-            title = None
-            cmd = 'youtube-dl --get-title %s' % url
-            proc = get_proc(cmd)
-            (stdout, stderr) = proc.communicate()
-            if proc.returncode == 0:
-                stdout = stdout.strip()
-                args['text'] = "Downloaded: %s<br/>" % url
-                args['text'] += "Name: %s<br/>" % stdout
-                title = stdout
-            else:
-                args['text'] = "ERROR RETURN FROM youtube-dl binary<br/>"
+            ydw = YoutubeDlWrapper(url)
 
-            cmd = 'youtube-dl --get-filename %s' % url
-            proc = get_proc(cmd)
-            (stdout, stderr) = proc.communicate()
-            if proc.returncode != 0:
-                args['text'] += "ERROR cmd '%s' failed<br/>" % cmd
-            stdout = stdout.strip()
-            fname = stdout                
-            ext = fname.split('.')[-1]
-
-            dest = os.path.join(DOWNLOAD_DIR, title)
-            dest = dest + '.' + ext
-            if os.path.exists(dest):
-                args['text'] += "ERROR %s already exists<br/>" % dest
+            ret = fix_text(ydw.get_filename())
+            if ret['err']:
+                args['text'] += ret['text']
                 return PAGE % args
 
-            cmd = 'youtube-dl %s' % url
-            proc = get_proc(cmd)
-            (stdout, stderr) = proc.communicate()
-            if proc.returncode != 0:
-                args['text'] += "ERROR cmd '%s' failed<br/>" % cmd
-            shutil.move(fname, dest)
+            ret = fix_text(ydw.download())
+            if ret['err']:
+                args['text'] += ret['text']
+                return PAGE % args
 
         return PAGE % args
     index.exposed = True
