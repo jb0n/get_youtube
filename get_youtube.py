@@ -21,12 +21,19 @@ PAGE = '''
 <HTML>
     <TITLE>Download Youtube Videos</TITLE>
     <BODY>
+        <meta http-equiv="refresh" content="5"/>
         <CENTER><H2>Download Youtube Videos</H2></CENTER>
         <FORM name="input" action="" method="post">
-            Enter YouTube URL to download: <input type="text" name="url"/>
-            <br/>
+            <CENTER>
+                Enter YouTube URL to download: <input type="text" name="url"/>
+                <BR/>
+                <input type="submit" value="Submit">
+                <BR/>
+            </CENTER>
         </FORM>
+        <CENTER>
         %(text)s
+        </CENTER>
     </BODY>
 </HTML>
 '''
@@ -35,6 +42,7 @@ YDL_QUEUE = YdlQueue()
 DOWN_QUEUE = YdlQueue()
 TITLE_QUEUE = YdlQueue()
 ERR_QUEUE = YdlQueue()
+RECENT_QUEUE = YdlQueue()
 
 
 def title_worker():
@@ -61,9 +69,10 @@ def download_worker():
     if ret['err']:
         ERR_QUEUE.put(ret['text'])
     DOWN_QUEUE.remove(ydw)
+    RECENT_QUEUE.put(ydw)
 
 
-def queue_to_table(queue, title, link=None):
+def queue_to_table(queue, title, link=None, reverse=False):
     '''
     get a table from a queue
     '''
@@ -75,7 +84,8 @@ def queue_to_table(queue, title, link=None):
         ret += '<tr><td><center><b>%s</b><a href="%s"> (clear)</a></center></td></tr>' % (title, link)
     else:
         ret += '<tr><td><b>%s</b></td></tr>' % title
-
+    if reverse:
+        entries.reverse()
     for entry in entries:
         ret +=  '<tr><td>%s</td></tr>' % str(entry)
     ret += '</table><br/>'
@@ -110,6 +120,8 @@ class GetYoutube(object):
         args['text'] += queue_to_table(YDL_QUEUE, 'Queue')
         args['text'] += queue_to_table(ERR_QUEUE, 'Errors', 'clear_errors')
         args['text'] += queue_to_table(TITLE_QUEUE, 'Waiting for titles')
+        RECENT_QUEUE.drop_lru(10)
+        args['text'] += queue_to_table(RECENT_QUEUE, 'Recently Downloaded', None, True)
 
         return PAGE % args
     index.exposed = True

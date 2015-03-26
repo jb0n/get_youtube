@@ -70,3 +70,12 @@ class YdlQueue(object):
             if item in self.queue:
                 self.queue.remove(item)
 
+
+    def drop_lru(self, num):
+        '''
+        drop the least recently used keeping num elements
+        '''
+        with self.lock:
+            while len(self.queue) > num:
+                self.queue = self.queue[1:]
+
