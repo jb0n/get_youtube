@@ -14,9 +14,9 @@ DOWNLOAD_DIR = "video/"
 ADDR = '0.0.0.0'
 PAGE = '''
 <HTML>
-    <HEAD>Download Youtube Videos</HEAD>
     <TITLE>Download Youtube Videos</TITLE>
     <BODY>
+        <CENTER><H2>Download Youtube Videos</H2></CENTER>
         <FORM name="input" action="" method="post">
             Enter YouTube URL to download: <input type="text" name="url"/>
             <br/>
