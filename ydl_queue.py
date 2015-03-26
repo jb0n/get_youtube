@@ -4,6 +4,7 @@ python Queue implentations don't support that and I don't want to play games
 with emptying and refilling them to see the contents.
 '''
 
+import copy
 import threading
 
 class YdlQueue(object):
@@ -50,7 +51,7 @@ class YdlQueue(object):
         '''
         ret = []
         with self.lock:
-            ret = self.queue
+            ret = copy.copy(self.queue)
         return ret
 
 
