@@ -54,3 +54,11 @@ class YdlQueue(object):
             ret = self.queue
         return ret
 
+
+    def clear(self):
+        '''
+        remove everything from the queue
+        '''
+        with self.lock:
+            self.queue = []
+

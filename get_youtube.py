@@ -75,13 +75,21 @@ class GetYoutube(object):
 
         errors = ERR_QUEUE.peek_all()
         if len(errors):
-            args['text'] += '<br/><H2>Errors</H2>'
+            args['text'] += '<br/><H2>Errors<a href="clear_errors">(clear)</a></H2>'
             for error in errors:
                 args['text'] += '%s<br/>' % error
                 
         
         return PAGE % args
     index.exposed = True
+
+    def clear_errors(self):
+        '''
+        clear error queue
+        '''
+        ERR_QUEUE.clear()
+        raise cherrypy.HTTPRedirect("/")
+    clear_errors.exposed = True
 
 def main():
     'do ALL the things'
