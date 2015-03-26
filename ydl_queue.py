@@ -39,7 +39,6 @@ class YdlQueue(object):
         ret = None
         with self.lock:
             if len(self.queue):
-                print "RETURNING ONE"
                 ret = self.queue[0]
                 self.queue = self.queue[1:]
         return ret
