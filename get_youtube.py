@@ -32,7 +32,22 @@ PAGE = '''
 '''
 
 YDL_QUEUE = YdlQueue()
+DOWN_QUEUE = YdlQueue()
+TITLE_QUEUE = YdlQueue()
 ERR_QUEUE = YdlQueue()
+
+
+def title_worker():
+    '''
+    '''
+    while True:
+        ydw = TITLE_QUEUE.get()
+        if ydw == None:
+            return
+        ret = ydw.get_title()
+        if ret['err']:
+            ERR_QUEUE.put(ret['text'])
+        YDL_QUEUE.put(ydw)
 
 
 def download_worker():
@@ -41,10 +56,30 @@ def download_worker():
     ydw = YDL_QUEUE.get()
     if ydw == None:
         return
+    DOWN_QUEUE.put(ydw)    
     ret = fix_text(ydw.download())
     if ret['err']:
         ERR_QUEUE.put(ret['text'])
+    DOWN_QUEUE.remove(ydw)
 
+
+def queue_to_table(queue, title, link=None):
+    '''
+    get a table from a queue
+    '''
+    entries = queue.peek_all()
+    if len(entries) == 0:
+        return ''
+    ret = '<table style="width:100%%" border=1>'
+    if link:
+        ret += '<tr><td><center><b>%s</b><a href="%s"> (clear)</a></center></td></tr>' % (title, link)
+    else:
+        ret += '<tr><td><b>%s</b></td></tr>' % title
+
+    for entry in entries:
+        ret +=  '<tr><td>%s</td></tr>' % str(entry)
+    ret += '</table><br/>'
+    return ret
 
 
 def fix_text(ret):
@@ -63,25 +98,22 @@ class GetYoutube(object):
         args = {'text': ''}
 
         if url not in (None, ''):
-            ydw = YoutubeDlWrapper(url)
-            YDL_QUEUE.put(ydw)
-            #ret = fix_text(ydw.download())
-            #if ret['err']:
-            #    args['text'] += ret['text']
-            #    return PAGE % args
-        entries = YDL_QUEUE.peek_all()
-        for entry in entries:
-            args['text'] += '%s<br/>' % entry.url
+            ydw = None
+            try:
+                ydw = YoutubeDlWrapper(url)
+            except Exception, exc:
+                args['text'] = str(exc)
+                return PAGE % args
 
-        errors = ERR_QUEUE.peek_all()
-        if len(errors):
-            args['text'] += '<br/><H2>Errors<a href="clear_errors">(clear)</a></H2>'
-            for error in errors:
-                args['text'] += '%s<br/>' % error
-                
-        
+            TITLE_QUEUE.put(ydw)
+        args['text'] += queue_to_table(DOWN_QUEUE, 'Downloading')
+        args['text'] += queue_to_table(YDL_QUEUE, 'Queue')
+        args['text'] += queue_to_table(ERR_QUEUE, 'Errors', 'clear_errors')
+        args['text'] += queue_to_table(TITLE_QUEUE, 'Waiting for titles')
+
         return PAGE % args
     index.exposed = True
+
 
     def clear_errors(self):
         '''
@@ -94,6 +126,7 @@ class GetYoutube(object):
 def main():
     'do ALL the things'
     cherrypy.server.socket_host = ADDR
+    Monitor(cherrypy.engine, title_worker, frequency=1).subscribe()
     Monitor(cherrypy.engine, download_worker, frequency=1).subscribe()
     cherrypy.quickstart(GetYoutube())
 

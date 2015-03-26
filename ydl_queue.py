@@ -62,3 +62,12 @@ class YdlQueue(object):
         with self.lock:
             self.queue = []
 
+
+    def remove(self, item):
+        '''
+        like remove from a list
+        '''
+        with self.lock:
+            if item in self.queue:
+                self.queue.remove(item)
+

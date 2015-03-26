@@ -21,8 +21,16 @@ class YoutubeDlWrapper(object):
         '''
         Save off URL for later use
         '''
+        if not url.startswith('http://') and not url.startswith('https://'):
+            raise Exception("Bad URL: %s" % url)
         self.url = url
         self.title = None
+
+    def __str__(self):
+        'stringify'
+        if self.title:
+            return self.title
+        return self.url
 
 
     @staticmethod
@@ -38,8 +46,14 @@ class YoutubeDlWrapper(object):
             ret['text'] = stdout
         else:
             ret['err'] = True
-            ret['text'] = "ERROR RETURN FROM youtube-dl binary:\n" \
-            "stdout: %s\nstderr: %s" % (stdout, stderr)
+            ret['text'] = ''
+            if stderr != '':
+                ret['text'] += "%s\n" % stderr
+            elif stdout != '':
+                ret['text'] += "%s\n" % stdout
+            else: #unlikely....
+                ret['text'] += "no output, only got return code: %d" % proc.returncode
+
         return ret
 
 
