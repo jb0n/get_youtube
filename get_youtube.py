@@ -44,10 +44,10 @@ def title_worker():
         ydw = TITLE_QUEUE.get()
         if ydw == None:
             return
+        YDL_QUEUE.put(ydw)
         ret = ydw.get_title()
         if ret['err']:
             ERR_QUEUE.put(ret['text'])
-        YDL_QUEUE.put(ydw)
 
 
 def download_worker():
