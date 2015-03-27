@@ -97,7 +97,7 @@ class YoutubeDlWrapper(object):
             return ret
         fname = ret['text'].strip()
         ext = fname.split('.')[-1]
-        downdir = os.path.expanduser(self.cfg.get('GetYoutube', 'DownloadDirectory'))
+        downdir = os.path.expanduser(cfg.get('GetYoutube', 'DownloadDirectory'))
         dest = os.path.join(downdir, title)
         dest = dest + '.' + ext
         if os.path.exists(dest):

@@ -25,6 +25,8 @@ TITLE_QUEUE = YdlQueue()
 ERR_QUEUE = YdlQueue()
 RECENT_QUEUE = YdlQueue()
 
+CONFIG = None
+
 
 def title_worker():
     '''
@@ -48,7 +50,7 @@ def download_worker():
     if ydw == None:
         return
     DOWN_QUEUE.put(ydw)
-    ret = text_to_html(ydw.download())
+    ret = text_to_html(ydw.download(CONFIG))
     if ret['err']:
         ERR_QUEUE.put(ret['text'])
     DOWN_QUEUE.remove(ydw)
@@ -367,6 +369,8 @@ def main():
     except YdlException, exc:
        print "Couldn't get config! Reason: %s" % str(exc)
        sys.exit(-1)
+    global CONFIG
+    CONFIG = cfg
     config.ECHO_NEST_API_KEY = cfg.get('GetYoutube', 'EchoNestKey')
     cherrypy.server.socket_host = cfg.get('GetYoutube', 'ListenAddr')
     cherrypy.server.socket_port = int(cfg.get('GetYoutube', 'ListenPort'))
