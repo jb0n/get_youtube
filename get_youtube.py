@@ -370,7 +370,8 @@ def main():
     cherrypy.server.socket_host = cfg.get('GetYoutube', 'ListenAddr')
     cherrypy.server.socket_port = int(cfg.get('GetYoutube', 'ListenPort'))
     Monitor(cherrypy.engine, title_worker, frequency=1).subscribe()
-    Monitor(cherrypy.engine, download_worker, frequency=1).subscribe()
+    for _ in xrange(int(cfg.get('GetYoutube', 'NumConcurrentDownloads'))):
+        Monitor(cherrypy.engine, download_worker, frequency=1).subscribe()
     cherrypy.quickstart(GetYoutube(cfg))
 
 
