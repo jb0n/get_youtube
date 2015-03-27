@@ -262,7 +262,7 @@ class GetYoutube(object):
       </BODY>
     </HTML>
     ''' % page_header
-    def classify(self, filename, new_name=None):
+    def classify(self, filename, new_name=None, artist=None, title=None):
         '''
         classify a file
         '''
@@ -272,6 +272,11 @@ class GetYoutube(object):
         targs = {'filename': filename,
                  'quoted_filename': quoted_filename
         }
+
+        if new_name == None and artist != None and title != None:
+            artist = name_to_path(urllib.unquote(artist))
+            title = name_to_path(urllib.unquote(title))
+            new_name = os.path.join(artist, title)
 
         if new_name:
             ext = filename.split('.')[-1]
@@ -311,8 +316,16 @@ class GetYoutube(object):
                 <TD>%(artist)s</TD>
                 <TD>%(title)s</TD>
             ''' % targs
-        args['text'] += '<INPUT type="submit" value="Classify"/>'
+        args['text'] += '<TR><TD><TD/><TD><INPUT type="submit" value="Classify"/></TD>'
         args['text'] += '</FORM></TABLE>'
+
+        args['text'] += '<H4>Manual</H4><TABLE>'
+        args['text'] += '<FORM name="classify_form" action="classify" method="post">'
+        args['text'] += '<TR><TD>Artist (dir)</TD><TD>Title (filename)</TD>'
+        args['text'] += '<INPUT type="hidden" name="filename" value="%(filename)s"/>' % targs
+        args['text'] += '<TR><TD><INPUT type="text" name="artist"/></TD>'
+        args['text'] += '<TD><INPUT type="text" name="title"/></TD>' 
+        args['text'] += '<TR><TD><INPUT type="submit" value="Classify"/></TD></TABLE>'
 
         return self.classify_page % args
     classify.exposed = True
