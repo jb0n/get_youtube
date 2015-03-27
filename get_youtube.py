@@ -4,6 +4,9 @@
 Script to download youtube videos and organize them (if possible).
 '''
 
+import os
+import urllib
+
 import cherrypy
 from cherrypy.process.plugins import Monitor
 
@@ -11,29 +14,10 @@ from cherrypy.process.plugins import Monitor
 
 from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
+from ydl_util import humansize, date_from_unix, text_to_html
 
 DOWNLOAD_DIR = "video/"
 ADDR = '0.0.0.0'
-PAGE = '''
-<HTML>
-    <TITLE>Download Youtube Videos</TITLE>
-    <BODY>
-        <meta http-equiv="refresh" content="5"/>
-        <CENTER><H2>Download Youtube Videos</H2></CENTER>
-        <FORM name="input" action="" method="post">
-            <CENTER>
-                Enter YouTube URL to download: <input type="text" name="url"/>
-                <BR/>
-                <input type="submit" value="Submit">
-                <BR/>
-            </CENTER>
-        </FORM>
-        <CENTER>
-        %(text)s
-        </CENTER>
-    </BODY>
-</HTML>
-'''
 
 YDL_QUEUE = YdlQueue()
 DOWN_QUEUE = YdlQueue()
@@ -64,7 +48,7 @@ def download_worker():
     if ydw == None:
         return
     DOWN_QUEUE.put(ydw)
-    ret = fix_text(ydw.download())
+    ret = text_to_html(ydw.download())
     if ret['err']:
         ERR_QUEUE.put(ret['text'])
     DOWN_QUEUE.remove(ydw)
@@ -92,16 +76,40 @@ def queue_to_table(queue, title, link=None, reverse=False):
     return ret
 
 
-def fix_text(ret):
-    'turn \n into <br/> and make sure one is  on the end'
-    ret['text'] = ret['text'].replace('\n', '<br/>')
-    if not ret['text'].endswith('<br/>'):
-        ret['text'] = ret['text'] + '<br/>'
-    return ret
-
-
 class GetYoutube(object):
     'The webserver class to downlod videos from youtube'
+    page_header = '''
+        <TABLE style="width:100%%" align="center">
+          <TR>
+            <TD align="center"><a href="/">Download</a></TD>
+            <TD align="center"><a href="/manage">Manage</a></TD>
+            <TD align="center"><a href="/settings">Settings</a></TD>
+          </TR>
+        </TABLE>
+        <HR/>
+    '''
+    index_page = '''
+    <HTML>
+      <TITLE>Download Youtube Videos</TITLE>
+      <BODY>
+        <meta http-equiv="refresh" content="5"/>
+        <CENTER><H2>Download Youtube Videos</H2></CENTER>
+        %s 
+        <FORM name="input" action="" method="post">
+          <CENTER>
+            Enter YouTube URL to download: <input type="text" name="url"/>
+            <BR/>
+            <input type="submit" value="Submit">
+            <BR/>
+          </CENTER>
+        </FORM>
+          <CENTER>
+          %%(text)s
+          </CENTER>
+      </BODY>
+    </HTML>
+    ''' % page_header
+
     def index(self, url=None):
         'index/default page'
 
@@ -123,8 +131,7 @@ class GetYoutube(object):
         RECENT_QUEUE.drop_lru(10)
         args['text'] += queue_to_table(RECENT_QUEUE, 'Recently Downloaded',
             None, True)
-
-        return PAGE % args
+        return self.index_page % args
     index.exposed = True
 
 
@@ -135,6 +142,159 @@ class GetYoutube(object):
         ERR_QUEUE.clear()
         raise cherrypy.HTTPRedirect("/")
     clear_errors.exposed = True
+
+    
+    manage_page = '''
+    <HTML>
+      <TITLE>Manage Videos</TITLE>
+      <BODY>
+        <CENTER>
+          <H2>Manage Videos</H2>
+          %s
+        </CENTER>
+        %%(text)s
+      </BODY>
+    </HTML>
+    ''' % page_header
+
+    def manage(self, filename=None):
+        '''
+        '''
+        args = {'text':''}
+        if filename == None:
+            all_files = os.listdir(DOWNLOAD_DIR)
+            all_files.sort()
+            for fname in all_files:
+                args['text'] += '<ul><a href="?filename=%s">%s</a></ul>' % \
+                    (urllib.quote(fname), fname)
+        else:
+            fname = os.path.join(DOWNLOAD_DIR, filename)
+            fname = os.path.normpath(fname)
+            if not fname.startswith(DOWNLOAD_DIR):
+                args['text'] += "Bad filename %s. File outside of download dir '%s'" % \
+                    (filename, DOWNLOAD_DIR)
+                return self.manage_page % args
+            fstats = os.stat(fname)
+            targs = {
+                'filename': filename,
+                'quoted_filename': urllib.quote(filename),
+                'size': humansize(fstats.st_size),
+                'creation_date': date_from_unix(fstats.st_ctime),
+                'last_accessed': date_from_unix(fstats.st_atime)
+            }
+            args['text'] += '''
+            <CENTER>
+              <TABLE>
+                <TR><H3>%(filename)s</H3></TR>
+                <TR><TD>size:</TD><TD>%(size)s</TD>
+                <TR><TD>creation date:</TD><TD>%(creation_date)s</TD>
+                <TR><TD>last accessed:</TD><TD>%(last_accessed)s</TD>
+                <TR><TD>
+                  <FORM name="classify_form" action="classify" method="post">
+                    <INPUT type="hidden" name="filename" value="%(quoted_filename)s"/>
+                    <INPUT type="submit" value="Classify"/>
+                  </FORM>
+                </TD>
+                <TD>
+                  <FORM name="delete_form" action="delete" method="post">
+                    <INPUT type="hidden" name="filename" value="%(quoted_filename)s"/>
+                    <INPUT type="submit" value="Delete"/>
+                  </FORM>
+                </TD></TR>
+              </TABLE>
+            </CENTER>
+            ''' % targs
+        return self.manage_page % args
+    manage.exposed = True
+
+    delete_page = '''
+    <HTML>
+      <TITLE>Delete File</TITLE>
+      <BODY>
+        <CENTER>
+          <H2>Delete File</H2>
+          %s
+        %%(text)s
+        </CENTER>
+      </BODY>
+    </HTML>
+    ''' % page_header
+    def delete(self, filename, really_delete=None):
+        '''
+        delete a file
+        '''
+        quoted_filename = filename
+        filename = urllib.unquote(filename)
+        args = {'text':''}
+        if really_delete:
+            fname = os.path.join(DOWNLOAD_DIR, filename)
+            fname = os.path.normpath(fname)
+            if not fname.startswith(DOWNLOAD_DIR):
+                args['text'] += "Bad filename %s. File outside of download dir '%s'" % \
+                    (filename, DOWNLOAD_DIR)
+                return self.delete_page % args
+            os.unlink(fname)
+            args['text'] = 'Ok, deleted<BR/>%s' % filename
+            return self.delete_page % args
+
+        targs = {'filename': filename,
+                 'quoted_filename': quoted_filename
+        }
+        args['text'] = '''<H3>Are you sure you want to delete?</H3><BR/> %(filename)s
+        <FORM name="delete_form" action="delete" method="post">
+          <INPUT type="hidden" name="filename" value="%(quoted_filename)s"/>
+          <INPUT type="hidden" name="really_delete" value=1/>
+          <INPUT type="submit" value="Delete"/>
+        </FORUM>
+        ''' % targs
+        return self.delete_page % args
+    delete.exposed = True 
+
+    classify_page = '''
+    <HTML>
+      <TITLE>Classify File</TITLE>
+      <BODY>
+        <CENTER>
+          <H2>Classify File</H2>
+          %s
+        </CENTER>
+        %%(text)s
+      </BODY>
+    </HTML>
+    ''' % page_header
+    def classify(self, filename):
+        '''
+        classify a file
+        '''
+        filename = urllib.unquote(filename)
+        args = {'text':''}
+        args['text'] = "Classify: %s" % filename
+        return self.classify_page % args
+    classify.exposed = True
+
+
+    settings_page = '''
+    <HTML>
+      <TITLE>Settings</TITLE>
+      <BODY>
+        <CENTER>
+          <H2>Settings</H2>
+          %s
+        </CENTER>
+        %%(text)s
+      </BODY>
+    </HTML>
+    ''' % page_header
+
+    def settings(self):
+        '''
+        Manage configuration/settings
+        '''
+        args = {'text':''}
+        return self.settings_page % args
+    settings.exposed = True
+
+
 
 def main():
     'do ALL the things'
