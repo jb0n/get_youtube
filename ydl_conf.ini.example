@@ -1,5 +1,5 @@
 [GetYoutube]
-DownloadDirectory: ~/media/music_videos/
+DownloadDirectory: ~/media/music_video/
 ListenAddr: 0.0.0.0
 ListenPort: 8080
 EchoNestKey: XXXXXXXXX
