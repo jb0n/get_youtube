@@ -2,6 +2,7 @@
 Various utility functions that have nowhere else to live
 '''
 
+import os
 import datetime
 
 SUFFIXES = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
@@ -30,4 +31,8 @@ def text_to_html(ret):
         ret['text'] = ret['text'] + '<br/>'
     return ret
 
-    
+
+def name_to_path(name):
+    'make sure a artist/title name can be used in a UNIX path'
+    return name.replace(os.path.sep, '_')
+
