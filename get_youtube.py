@@ -12,7 +12,7 @@ import urllib
 import cherrypy
 from cherrypy.process.plugins import Monitor
 
-from pyechonest import song, artist
+from pyechonest import song, artist, config
 
 from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
@@ -163,7 +163,7 @@ class GetYoutube(object):
     def manage(self, filename=None):
         '''
         '''
-        downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
+        downdir = os.path.expanduser(self.cfg.get('GetYoutube', 'DownloadDirectory'))
         args = {'text':''}
         if filename == None:
             all_files = os.listdir(downdir)
@@ -230,7 +230,7 @@ class GetYoutube(object):
         quoted_filename = filename
         filename = urllib.unquote(filename)
         args = {'text':''}
-        downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
+        downdir = os.path.expanduser(self.cfg.get('GetYoutube', 'DownloadDirectory'))
         if really_delete:
             fname = os.path.join(downdir, filename)
             fname = os.path.normpath(fname)
@@ -285,7 +285,7 @@ class GetYoutube(object):
             new_name = os.path.join(artist, title)
 
         if new_name:
-            downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
+            downdir = os.path.expanduser(self.cfg.get('GetYoutube', 'DownloadDirectory'))
             ext = filename.split('.')[-1]
             new_name = urllib.unquote(new_name)
             artist, title = new_name.split(os.path.sep)
@@ -367,11 +367,12 @@ def main():
     except YdlException, exc:
        print "Couldn't get config! Reason: %s" % str(exc)
        sys.exit(-1)
+    config.ECHO_NEST_API_KEY = cfg.get('GetYoutube', 'EchoNestKey')
     cherrypy.server.socket_host = cfg.get('GetYoutube', 'ListenAddr')
     cherrypy.server.socket_port = int(cfg.get('GetYoutube', 'ListenPort'))
     Monitor(cherrypy.engine, title_worker, frequency=1).subscribe()
     for _ in xrange(int(cfg.get('GetYoutube', 'NumConcurrentDownloads'))):
-        Monitor(cherrypy.engine, download_worker, frequency=1).subscribe()
+        Monitor(cherrypy.engine, download_worker, frequency=5).subscribe()
     cherrypy.quickstart(GetYoutube(cfg))
 
 
