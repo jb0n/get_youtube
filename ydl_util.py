@@ -3,7 +3,13 @@ Various utility functions that have nowhere else to live
 '''
 
 import os
+import sys
 import datetime
+import ConfigParser
+
+class YdlException(Exception):
+    'exception type for this project'
+    
 
 SUFFIXES = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def humansize(nbytes):
@@ -35,4 +41,14 @@ def text_to_html(ret):
 def name_to_path(name):
     'make sure a artist/title name can be used in a UNIX path'
     return name.replace(os.path.sep, '_')
+
+
+def get_config():
+    'get a config object from sys.argv[1]'
+    if len(sys.argv) < 2:
+        raise YdlException("You need to pass a config file as the first argument!")
+        
+    config = ConfigParser.ConfigParser()
+    config.read(sys.argv[1])
+    return config
 

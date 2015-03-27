@@ -5,6 +5,8 @@ config = ConfigParser.ConfigParser()
 config.read('Config.ini')
 config.sections()
 
+print config
+
 DownloadDirectory = config.get('GetYoutube', 'DownloadDirectory')
 ListenAddr = config.get('GetYoutube','ListenAddr')
 ListenPort = config.getint('GetYoutube', 'ListenPort')

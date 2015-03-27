@@ -5,6 +5,7 @@ Script to download youtube videos and organize them (if possible).
 '''
 
 import os
+import sys
 import shutil
 import urllib
 
@@ -15,8 +16,7 @@ from pyechonest import song, artist
 
 from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
-from ydl_util import humansize, date_from_unix, text_to_html, name_to_path
-from ydl_settings import DOWNLOAD_DIR, ADDR
+from ydl_util import humansize, date_from_unix, text_to_html, name_to_path, get_config, YdlException
 
 
 YDL_QUEUE = YdlQueue()
@@ -78,6 +78,11 @@ def queue_to_table(queue, title, link=None, reverse=False):
 
 class GetYoutube(object):
     'The webserver class to downlod videos from youtube'
+
+    def __init__(self, cfg):
+        'save off cfg'
+        self.cfg = cfg
+
     page_header = '''
         <TABLE style="width:100%%" align="center">
           <TR>
@@ -158,19 +163,20 @@ class GetYoutube(object):
     def manage(self, filename=None):
         '''
         '''
+        downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
         args = {'text':''}
         if filename == None:
-            all_files = os.listdir(DOWNLOAD_DIR)
+            all_files = os.listdir(downdir)
             all_files.sort()
             for fname in all_files:
                 args['text'] += '<ul><a href="?filename=%s">%s</a></ul>' % \
                     (urllib.quote(fname), fname)
         else:
-            fname = os.path.join(DOWNLOAD_DIR, filename)
+            fname = os.path.join(downdir, filename)
             fname = os.path.normpath(fname)
-            if not fname.startswith(DOWNLOAD_DIR):
+            if not fname.startswith(downdir):
                 args['text'] += "Bad filename %s. File outside of download dir '%s'" % \
-                    (filename, DOWNLOAD_DIR)
+                    (filename, downdir)
                 return self.manage_page % args
             fstats = os.stat(fname)
             targs = {
@@ -224,12 +230,13 @@ class GetYoutube(object):
         quoted_filename = filename
         filename = urllib.unquote(filename)
         args = {'text':''}
+        downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
         if really_delete:
-            fname = os.path.join(DOWNLOAD_DIR, filename)
+            fname = os.path.join(downdir, filename)
             fname = os.path.normpath(fname)
-            if not fname.startswith(DOWNLOAD_DIR):
+            if not fname.startswith(downdir):
                 args['text'] += "Bad filename %s. File outside of download dir '%s'" % \
-                    (filename, DOWNLOAD_DIR)
+                    (filename, downdir)
                 return self.delete_page % args
             os.unlink(fname)
             args['text'] = 'Ok, deleted<BR/>%s' % filename
@@ -278,10 +285,11 @@ class GetYoutube(object):
             new_name = os.path.join(artist, title)
 
         if new_name:
+            downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
             ext = filename.split('.')[-1]
             new_name = urllib.unquote(new_name)
             artist, title = new_name.split(os.path.sep)
-            destdir = os.path.join(DOWNLOAD_DIR, artist)
+            destdir = os.path.join(downdir, artist)
             if os.path.exists(destdir):
                 if not os.path.isdir(destdir):
                     args['text'] += "Cannot make '%s', since the path exists and isn't a file!" % \
@@ -289,7 +297,7 @@ class GetYoutube(object):
                     return self.classify_page % args
             else:
                 os.mkdir(destdir)
-            srcfile = os.path.join(DOWNLOAD_DIR, filename)
+            srcfile = os.path.join(downdir, filename)
             dstfile = os.path.join(destdir, title) + '.' + ext
             shutil.move(srcfile, dstfile)
             args['text'] += 'Ok, moved %s to %s' % (srcfile, dstfile)
@@ -353,10 +361,17 @@ class GetYoutube(object):
 
 def main():
     'do ALL the things'
-    cherrypy.server.socket_host = ADDR
+    cfg = None
+    try:
+       cfg = get_config()
+    except YdlException, exc:
+       print "Couldn't get config! Reason: %s" % str(exc)
+       sys.exit(-1)
+    cherrypy.server.socket_host = cfg.get('GetYoutube', 'ListenAddr')
+    cherrypy.server.socket_port = int(cfg.get('GetYoutube', 'ListenPort'))
     Monitor(cherrypy.engine, title_worker, frequency=1).subscribe()
     Monitor(cherrypy.engine, download_worker, frequency=1).subscribe()
-    cherrypy.quickstart(GetYoutube())
+    cherrypy.quickstart(GetYoutube(cfg))
 
 
 if __name__ == '__main__':

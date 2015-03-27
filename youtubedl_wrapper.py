@@ -6,8 +6,6 @@ import os
 import shutil
 from subprocess import Popen, PIPE
 
-from ydl_settings import DOWNLOAD_DIR
-
 def get_proc(cmd):
     'just got tired of typing this'
     return Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
@@ -84,7 +82,7 @@ class YoutubeDlWrapper(object):
         return self._run(cmd)
 
 
-    def download(self):
+    def download(self, cfg):
         '''
         Download the video and rename/move it
         '''
@@ -99,8 +97,8 @@ class YoutubeDlWrapper(object):
             return ret
         fname = ret['text'].strip()
         ext = fname.split('.')[-1]
-
-        dest = os.path.join(DOWNLOAD_DIR, title)
+        downdir = self.cfg.get('GetYoutube', 'DownloadDirectory')
+        dest = os.path.join(downdir, title)
         dest = dest + '.' + ext
         if os.path.exists(dest):
             ret = {'err': True}

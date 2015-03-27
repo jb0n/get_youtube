@@ -1,0 +1,6 @@
+[GetYoutube]
+DownloadDirectory: ~/media/music_videos/
+ListenAddr: 0.0.0.0
+ListenPort: 8080
+EchoNestKey: XXXXXXXXX
+NumConcurrentDownloads: 2
