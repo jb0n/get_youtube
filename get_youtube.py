@@ -16,9 +16,8 @@ from pyechonest import song, artist
 from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
 from ydl_util import humansize, date_from_unix, text_to_html, name_to_path
+from ydl_settings import DOWNLOAD_DIR, ADDR
 
-DOWNLOAD_DIR = "video/"
-ADDR = '0.0.0.0'
 
 YDL_QUEUE = YdlQueue()
 DOWN_QUEUE = YdlQueue()

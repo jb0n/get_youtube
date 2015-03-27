@@ -6,7 +6,7 @@ import os
 import shutil
 from subprocess import Popen, PIPE
 
-DOWNLOAD_DIR = "video/"
+from ydl_settings import DOWNLOAD_DIR
 
 def get_proc(cmd):
     'just got tired of typing this'
