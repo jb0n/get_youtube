@@ -52,3 +52,6 @@ def get_config():
     config.read(sys.argv[1])
     return config
 
+def drop_non_ascii(text):
+    'drop all non ascii chars'
+    return ''.join([i if ord(i) < 128 else ' ' for i in text])

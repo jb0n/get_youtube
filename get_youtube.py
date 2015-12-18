@@ -16,7 +16,8 @@ from pyechonest import song, artist, config
 
 from youtubedl_wrapper import YoutubeDlWrapper, YoutubeDlWrapperException
 from ydl_queue import YdlQueue
-from ydl_util import humansize, date_from_unix, text_to_html, name_to_path, get_config, YdlException
+from ydl_util import (humansize, date_from_unix, text_to_html, name_to_path, get_config,
+                      YdlException, drop_non_ascii)
 
 
 YDL_QUEUE = YdlQueue()
@@ -317,7 +318,9 @@ class GetYoutube(object):
             title = name_to_path(res.title)
             targs['artist'] = res.artist_name
             targs['title'] = res.title
-            new_name = os.path.join(urllib.quote(artist), urllib.quote(title))
+            clean_artist = drop_non_ascii(artist)
+            clean_title = drop_non_ascii(title)
+            new_name = os.path.join(urllib.quote(clean_artist), urllib.quote(clean_title))
             targs['new_name'] = new_name
             args['text'] += '''
               <TR>
