@@ -275,8 +275,8 @@ class GetYoutube(object):
         '''
         classify a file
         '''
-        filename = urllib.unquote(filename)
         quoted_filename = filename
+        filename = urllib.unquote(filename)
         args = {'text':''}
         targs = {'filename': filename,
                  'quoted_filename': quoted_filename
@@ -311,7 +311,7 @@ class GetYoutube(object):
         args['text'] += '<H3>Filename:</H3>%s<BR/><BR/><TABLE>' % filename
         args['text'] += '<TABLE><TR><TD/><TD><B>Artist</B></TD><TD><B>Title</B></TD>'
         args['text'] += '<FORM name="classify_form" action="classify" method="post">'
-        args['text'] += '<INPUT type="hidden" name="filename" value="%(filename)s"/>' % targs
+        args['text'] += '<INPUT type="hidden" name="filename" value="%(quoted_filename)s"/>' % targs
 
         for res in results:
             artist = name_to_path(res.artist_name)
